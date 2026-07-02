@@ -1,0 +1,51 @@
+name: codal-platform
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: codal-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  codal-api:
+    build:
+      context: ../CodalApi
+      dockerfile: Dockerfile
+    image: codal-api:local
+    container_name: codal-api
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SERVER_PORT: 9002
+      SERVER_SERVLET_CONTEXT_PATH: /codal
+      VITE_CODAL_NOTICES_REFRESH_MS: ${VITE_CODAL_NOTICES_REFRESH_MS:-30000}
+    ports:
+      - "${CODAL_API_PORT:-9002}:9002"
+
+  codal-ui:
+    build:
+      context: ../codal-ui
+      dockerfile: Dockerfile
+    image: codal-ui:local
+    container_name: codal-ui
+    restart: unless-stopped
+    depends_on:
+      - codal-api
+    ports:
+      - "${CODAL_UI_PORT:-5174}:80"
+
+volumes:
+  redis_data:
