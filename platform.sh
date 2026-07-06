@@ -214,7 +214,7 @@ menu_show_logs() {
 print_menu() {
   cat <<MENU
 
-${C_BOLD}${C_CYAN}===== Codal Platform =====${C_RESET}
+${C_BOLD}${C_CYAN}===== Bourse Data Platform =====${C_RESET}
 1) Start services
 2) Stop services
 3) Restart all services

@@ -1,1 +1,18 @@
 .env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+._*
+
+# logs
+*.log
+
+# docker compose local
+compose/.env
+*.env.local

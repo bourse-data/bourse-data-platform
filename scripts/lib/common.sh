@@ -14,13 +14,15 @@ normalize_digits() {
 SERVICE_ORDER=(
   redis
   codal-api
-  codal-ui
+  bourse-data-api
+  bourse-data-ui
 )
 
 REPOS=(
-  CodalApi
-  codal-ui
-  platform
+  codal-api
+  bourse-data-api
+  bourse-data-ui
+  bourse-data-platform
 )
 
 if [[ -t 1 ]]; then

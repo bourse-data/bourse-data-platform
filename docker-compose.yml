@@ -1,24 +1,24 @@
-name: codal-platform
+name: bourse-data-platform
 
 services:
   redis:
-    image: redis:7.4-alpine
+    image: redis:7-alpine
     container_name: codal-redis
     restart: unless-stopped
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    command: [ "redis-server", "--save", "", "--appendonly", "no" ]
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 5
 
   codal-api:
     build:
-      context: ../CodalApi
+      context: ../codal-api
       dockerfile: Dockerfile
     image: codal-api:local
     container_name: codal-api
@@ -31,21 +31,52 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SERVER_PORT: 9002
       SERVER_SERVLET_CONTEXT_PATH: /codal
-      VITE_CODAL_NOTICES_REFRESH_MS: ${VITE_CODAL_NOTICES_REFRESH_MS:-30000}
     ports:
-      - "${CODAL_API_PORT:-9002}:9002"
+      - "9002:9002"
 
-  codal-ui:
+  bourse-data-api:
     build:
-      context: ../codal-ui
+      context: ../bourse-data-api
       dockerfile: Dockerfile
-    image: codal-ui:local
-    container_name: codal-ui
+    image: bourse-data-api:local
+    container_name: bourse-data-api
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 9003
+      APP_MARKET_SEARCH_CSV_PATH: /app/market.csv
+      JAVA_TOOL_OPTIONS: >-
+        -XX:+UseSerialGC
+        -XX:+UseContainerSupport
+        -Xms32m
+        -Xmx128m
+        -XX:+ExitOnOutOfMemoryError
+        -Dfile.encoding=UTF-8
+    ports:
+      - "9003:9003"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O - http://localhost:9003/actuator/health | grep -q UP" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  bourse-data-ui:
+    build:
+      context: ../bourse-data-ui
+      dockerfile: Dockerfile
+      args:
+        VITE_CODAL_NOTICES_REFRESH_MS: 300000
+        VITE_API_ERROR_RETRY_MS: 15000
+    image: bourse-data-ui:local
+    container_name: bourse-data-ui
     restart: unless-stopped
     depends_on:
-      - codal-api
+      codal-api:
+        condition: service_started
+      bourse-data-api:
+        condition: service_healthy
     ports:
-      - "${CODAL_UI_PORT:-5174}:80"
+      - "8080:8080"
 
 volumes:
   redis_data:
