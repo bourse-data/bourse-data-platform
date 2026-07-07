@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
 compose_cmd() {
+  local ui_env_file="$WORKSPACE_DIR/bourse-data-ui/.env"
+  local env_args=()
+  [[ -f "$ui_env_file" ]] && env_args=(--env-file "$ui_env_file")
+
   if docker compose version >/dev/null 2>&1; then
-    docker compose -f "$COMPOSE_FILE" "$@"
+    docker compose -f "$COMPOSE_FILE" "${env_args[@]}" "$@"
   elif command -v docker-compose >/dev/null 2>&1; then
-    docker-compose -f "$COMPOSE_FILE" "$@"
+    docker-compose -f "$COMPOSE_FILE" "${env_args[@]}" "$@"
   else
     err "Neither 'docker compose' nor 'docker-compose' is available."
     return 127

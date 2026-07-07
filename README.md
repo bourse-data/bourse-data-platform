@@ -12,8 +12,18 @@ Local platform for running `bourse-data-ui`, `bourse-data-api`, `codal-api`, and
 ## Quick start
 
 ```bash
-cp .env.example .env
-docker compose up -d --build
+cp ../bourse-data-ui/.env.example ../bourse-data-ui/.env
+./platform.sh start
+```
+
+`platform.sh` loads `bourse-data-ui/.env` for both the Vite build and the
+`codal-api` container. `VITE_CODAL_REFRESH_INTERVAL_MS` is therefore the single
+refresh/cache interval for the UI, financial-notice cache, and financial-statement cache.
+
+For direct Compose usage, pass the same file explicitly:
+
+```bash
+docker compose --env-file ../bourse-data-ui/.env up -d --build
 ```
 
 ## Stop

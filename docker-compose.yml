@@ -31,6 +31,8 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SERVER_PORT: 9002
       SERVER_SERVLET_CONTEXT_PATH: /codal
+      # One source of truth: loaded from bourse-data-ui/.env by platform.sh.
+      VITE_CODAL_REFRESH_INTERVAL_MS: ${VITE_CODAL_REFRESH_INTERVAL_MS:-600000}
     ports:
       - "9002:9002"
 
@@ -65,8 +67,8 @@ services:
       context: ../bourse-data-ui
       dockerfile: Dockerfile
       args:
-        VITE_CODAL_NOTICES_REFRESH_MS: 300000
-        VITE_API_ERROR_RETRY_MS: 15000
+        VITE_CODAL_REFRESH_INTERVAL_MS: ${VITE_CODAL_REFRESH_INTERVAL_MS:-600000}
+        VITE_API_ERROR_RETRY_MS: ${VITE_API_ERROR_RETRY_MS:-15000}
     image: bourse-data-ui:local
     container_name: bourse-data-ui
     restart: unless-stopped
