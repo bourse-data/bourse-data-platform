@@ -5,7 +5,16 @@ services:
     image: redis:7-alpine
     container_name: codal-redis
     restart: unless-stopped
-    command: [ "redis-server", "--save", "", "--appendonly", "no" ]
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 512mb
+      - --maxmemory-policy
+      - allkeys-lru
     ports:
       - "6379:6379"
     volumes:
@@ -31,7 +40,6 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SERVER_PORT: 9002
       SERVER_SERVLET_CONTEXT_PATH: /codal
-      # One source of truth: loaded from bourse-data-ui/.env by platform.sh.
       VITE_CODAL_REFRESH_INTERVAL_MS: ${VITE_CODAL_REFRESH_INTERVAL_MS:-600000}
     ports:
       - "9002:9002"
@@ -78,7 +86,7 @@ services:
       bourse-data-api:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "8081:8081"
 
 volumes:
   redis_data:

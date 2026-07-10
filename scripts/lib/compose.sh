@@ -1,18 +1,87 @@
 #!/usr/bin/env bash
 
+compose_project_dir() {
+  (cd "$PLATFORM_ROOT" && pwd)
+}
+
+compose_file_path() {
+  local project_dir
+  project_dir="$(compose_project_dir)" || return 1
+  printf '%s/docker-compose.yml' "$project_dir"
+}
+
 compose_cmd() {
-  local ui_env_file="$WORKSPACE_DIR/bourse-data-ui/.env"
+  local project_dir compose_file ui_env_file
   local env_args=()
+
+  project_dir="$(compose_project_dir)" || {
+    err "Cannot access platform directory: $PLATFORM_ROOT"
+    err "If the project is on an external drive, make sure it is mounted."
+    return 1
+  }
+
+  compose_file="$(compose_file_path)" || return 1
+  if [[ ! -f "$compose_file" ]]; then
+    err "Compose file not found: $compose_file"
+    return 1
+  fi
+
+  ui_env_file="$WORKSPACE_DIR/bourse-data-ui/.env"
   [[ -f "$ui_env_file" ]] && env_args=(--env-file "$ui_env_file")
 
+  # Always run from the compose project directory. Docker Compose validates paths
+  # relative to "."; a stale or missing cwd causes "stat .: no such file or directory".
   if docker compose version >/dev/null 2>&1; then
-    docker compose -f "$COMPOSE_FILE" "${env_args[@]}" "$@"
+    (
+      cd "$project_dir" || exit 1
+      docker compose \
+        --project-directory "$project_dir" \
+        -f "$compose_file" \
+        "${env_args[@]}" \
+        "$@"
+    )
   elif command -v docker-compose >/dev/null 2>&1; then
-    docker-compose -f "$COMPOSE_FILE" "${env_args[@]}" "$@"
+    (
+      cd "$project_dir" || exit 1
+      docker-compose \
+        --project-directory "$project_dir" \
+        -f "$compose_file" \
+        "${env_args[@]}" \
+        "$@"
+    )
   else
     err "Neither 'docker compose' nor 'docker-compose' is available."
     return 127
   fi
+}
+
+validate_compose_contexts() {
+  local repo missing=0
+
+  if [[ ! -d "$WORKSPACE_DIR" ]]; then
+    err "Workspace directory is not accessible: $WORKSPACE_DIR"
+    return 1
+  fi
+
+  for repo in codal-api bourse-data-api bourse-data-ui; do
+    if [[ ! -d "$WORKSPACE_DIR/$repo" ]]; then
+      err "Missing build context: $WORKSPACE_DIR/$repo"
+      missing=1
+    fi
+  done
+
+  if [[ "$missing" -ne 0 ]]; then
+    err "One or more service directories are missing. Run Git update (option 4) first."
+    return 1
+  fi
+
+  if ! compose_cmd config >/dev/null 2>&1; then
+    err "Compose file validation failed."
+    compose_cmd config 2>&1 | tail -5
+    return 1
+  fi
+
+  return 0
 }
 
 docker_ready() {
@@ -28,8 +97,10 @@ docker_ready() {
 }
 
 compose_file_ready() {
-  if [[ ! -f "$COMPOSE_FILE" ]]; then
-    err "Compose file not found: $COMPOSE_FILE"
+  local compose_file
+  compose_file="$(compose_file_path)" || return 1
+  if [[ ! -f "$compose_file" ]]; then
+    err "Compose file not found: $compose_file"
     return 1
   fi
 }
@@ -98,6 +169,10 @@ run_compose_action() {
 platform_start() {
   cleanup_workspace_appledouble
 
+  if ! docker_ready || ! compose_file_ready || ! validate_compose_contexts; then
+    return 1
+  fi
+
   local build_flag=(--build)
   [[ "${NO_BUILD:-0}" == "1" ]] && build_flag=()
 
@@ -142,7 +217,7 @@ platform_restart() {
   local build_flag=(--build)
   [[ "${NO_BUILD:-0}" == "1" ]] && build_flag=()
 
-  if ! docker_ready || ! compose_file_ready; then
+  if ! docker_ready || ! compose_file_ready || ! validate_compose_contexts; then
     return 1
   fi
 

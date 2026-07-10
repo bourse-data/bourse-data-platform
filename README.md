@@ -34,7 +34,7 @@ docker compose down
 
 ## Endpoints
 
-- UI: `http://localhost:8080`
+- UI: `http://localhost:8081`
 - Symbol search API: `http://localhost:9003/api/v1/market-search/symbols?query=فملی`
 - API: `http://localhost:9002/codal`
 - Swagger: `http://localhost:9002/codal/doc.html`
