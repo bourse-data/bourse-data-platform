@@ -34,20 +34,22 @@ compose_cmd() {
   if docker compose version >/dev/null 2>&1; then
     (
       cd "$project_dir" || exit 1
-      docker compose \
-        --project-directory "$project_dir" \
-        -f "$compose_file" \
-        "${env_args[@]}" \
-        "$@"
+      # Bash 3 (the macOS system Bash) can treat an empty local array as unset
+      # when nounset is enabled. Only expand it when it contains an env file.
+      if [[ ${#env_args[@]} -gt 0 ]]; then
+        docker compose --project-directory "$project_dir" -f "$compose_file" "${env_args[@]}" "$@"
+      else
+        docker compose --project-directory "$project_dir" -f "$compose_file" "$@"
+      fi
     )
   elif command -v docker-compose >/dev/null 2>&1; then
     (
       cd "$project_dir" || exit 1
-      docker-compose \
-        --project-directory "$project_dir" \
-        -f "$compose_file" \
-        "${env_args[@]}" \
-        "$@"
+      if [[ ${#env_args[@]} -gt 0 ]]; then
+        docker-compose --project-directory "$project_dir" -f "$compose_file" "${env_args[@]}" "$@"
+      else
+        docker-compose --project-directory "$project_dir" -f "$compose_file" "$@"
+      fi
     )
   else
     err "Neither 'docker compose' nor 'docker-compose' is available."
@@ -191,7 +193,11 @@ platform_start() {
     info "Starting services..."
   fi
 
-  run_compose_action up "${build_flag[@]}" -d
+  if [[ ${#build_flag[@]} -gt 0 ]]; then
+    run_compose_action up "${build_flag[@]}" -d
+  else
+    run_compose_action up -d
+  fi
 }
 
 platform_stop() {
@@ -223,7 +229,11 @@ platform_restart() {
 
   if [[ "${#SELECTED_SERVICES[@]}" -eq 0 ]]; then
     info "Restarting all services..."
-    run_compose_action up "${build_flag[@]}" -d
+    if [[ ${#build_flag[@]} -gt 0 ]]; then
+      run_compose_action up "${build_flag[@]}" -d
+    else
+      run_compose_action up -d
+    fi
     return $?
   fi
 
@@ -236,7 +246,11 @@ platform_restart() {
   done
 
   info "Restarting: ${SELECTED_SERVICES[*]}"
-  run_compose_action up "${build_flag[@]}" -d "${SELECTED_SERVICES[@]}"
+  if [[ ${#build_flag[@]} -gt 0 ]]; then
+    run_compose_action up "${build_flag[@]}" -d "${SELECTED_SERVICES[@]}"
+  else
+    run_compose_action up -d "${SELECTED_SERVICES[@]}"
+  fi
 }
 
 platform_status() {
@@ -280,7 +294,11 @@ platform_logs() {
   fi
 
   info "Showing logs for $service (last $tail_lines lines)."
-  compose_cmd logs --tail "$tail_lines" "${follow_args[@]}" "$service"
+  if [[ ${#follow_args[@]} -gt 0 ]]; then
+    compose_cmd logs --tail "$tail_lines" "${follow_args[@]}" "$service"
+  else
+    compose_cmd logs --tail "$tail_lines" "$service"
+  fi
   local status=$?
   if [[ $status -eq 0 || $status -eq 130 ]]; then
     return 0

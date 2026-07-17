@@ -11,10 +11,6 @@ services:
       - "yes"
       - --appendfsync
       - everysec
-      - --maxmemory
-      - 512mb
-      - --maxmemory-policy
-      - allkeys-lru
     ports:
       - "6379:6379"
     volumes:
